@@ -1,10 +1,12 @@
+import { useEffect, useState } from 'react';
 import { ArrowLeft, CalendarRange, CircleDollarSign, FileText, ShieldCheck } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { Header } from '../components/layout/header';
 import { StatusBadge } from '../components/panel/status-badge';
 import { buttonVariants } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { contratoPorId, empleadoPorId } from '../lib/mock-data';
+import type { ContractDetail } from '../shared/dto';
+import { unwrapResult } from '../lib/electron-api';
 import { NotFoundPage } from './not-found-page';
 
 const fmtMoney = (amount: number) =>
@@ -16,17 +18,38 @@ const fmtMoney = (amount: number) =>
 
 export function ContratoDetallePage() {
   const { id = '' } = useParams();
-  const contrato = contratoPorId(id);
+  const [contrato, setContrato] = useState<ContractDetail | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void unwrapResult(window.electronAPI.contracts.getById(id))
+      .then((response) => {
+        if (isMounted) {
+          setContrato(response);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoaded(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  if (!isLoaded) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Cargando contrato...</div>;
+  }
 
   if (!contrato) {
     return <NotFoundPage />;
   }
 
-  const empleado = empleadoPorId(contrato.empleadoId);
-
-  if (!empleado) {
-    return <NotFoundPage />;
-  }
+  const empleado = contrato.empleado;
 
   return (
     <>

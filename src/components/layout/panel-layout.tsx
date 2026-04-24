@@ -9,7 +9,7 @@ const navLinkClasses = 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm f
 
 type PanelLayoutProps = {
   children: ReactNode;
-  onLogout: () => void;
+  onLogout: () => void | Promise<void>;
 };
 
 export function PanelLayout({ children, onLogout }: PanelLayoutProps) {

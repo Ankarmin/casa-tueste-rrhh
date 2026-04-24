@@ -10,16 +10,30 @@ import path from 'node:path';
 
 const appIcon = path.resolve(__dirname, 'public', 'favicon');
 const appIconIco = path.resolve(__dirname, 'public', 'favicon.ico');
+const appDescription = 'Sistema de Recursos Humanos de Casa Tueste para escritorio.';
+const executableName = 'CasaTuesteRRHH';
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     icon: appIcon,
+    executableName,
+    win32metadata: {
+      CompanyName: 'Casa Tueste',
+      FileDescription: appDescription,
+      InternalName: executableName,
+      OriginalFilename: `${executableName}.exe`,
+      ProductName: 'Casa Tueste RRHH',
+    },
   },
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({
+      authors: 'Casa Tueste',
+      description: appDescription,
+      exe: `${executableName}.exe`,
       setupIcon: appIconIco,
+      setupExe: `${executableName}Setup.exe`,
     }),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),

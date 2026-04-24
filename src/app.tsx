@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Toaster } from 'sonner';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { PanelLayout } from './components/layout/panel-layout';
+import { unwrapResult } from './lib/electron-api';
 import { LoginPage } from './pages/login-page';
 import { DashboardPage } from './pages/dashboard-page';
 import { AsistenciasPage } from './pages/asistencias-page';
@@ -15,7 +16,7 @@ import { NotFoundPage } from './pages/not-found-page';
 
 type ProtectedLayoutProps = {
   isAuthenticated: boolean;
-  onLogout: () => void;
+  onLogout: () => Promise<void>;
 };
 
 function ProtectedLayout({ isAuthenticated, onLogout }: ProtectedLayoutProps) {
@@ -32,6 +33,36 @@ function ProtectedLayout({ isAuthenticated, onLogout }: ProtectedLayoutProps) {
 
 export function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void unwrapResult(window.electronAPI.auth.getSession())
+      .then((session) => {
+        if (isMounted) {
+          setIsAuthenticated(Boolean(session));
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setIsAuthenticated(false);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (isCheckingSession) {
+    return <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">Cargando sesion...</div>;
+  }
 
   return (
     <>
@@ -51,7 +82,8 @@ export function App() {
           element={
             <ProtectedLayout
               isAuthenticated={isAuthenticated}
-              onLogout={() => {
+              onLogout={async () => {
+                await unwrapResult(window.electronAPI.auth.logout());
                 setIsAuthenticated(false);
               }}
             />

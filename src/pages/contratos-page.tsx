@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Download, Eye, FileCheck2, FileText, FileWarning, FileX2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/layout/header';
@@ -6,7 +7,8 @@ import { StatusBadge } from '../components/panel/status-badge';
 import { Button, buttonVariants } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { contratos, empleadoPorId } from '../lib/mock-data';
+import type { ContractsOverview } from '../shared/dto';
+import { unwrapResult } from '../lib/electron-api';
 
 const fmtMoney = (amount: number) =>
   new Intl.NumberFormat('es-PE', {
@@ -16,15 +18,38 @@ const fmtMoney = (amount: number) =>
   }).format(amount);
 
 export function ContratosPage() {
+  const [overview, setOverview] = useState<ContractsOverview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void unwrapResult(window.electronAPI.contracts.list())
+      .then((response) => {
+        if (isMounted) {
+          setOverview(response);
+        }
+      })
+      .catch((loadError) => {
+        if (isMounted) {
+          setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar contratos.');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <>
       <Header title="Gestion de contratos" subtitle="Control de vigencias, renovaciones y documentacion laboral" />
       <main className="animate-fade-in flex-1 space-y-8 overflow-y-auto p-6 lg:p-10">
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard title="Total contratos" value={contratos.length} icon={FileText} accent="primary" />
-          <KpiCard title="Vigentes" value={contratos.filter((contrato) => contrato.estado === 'vigente').length} icon={FileCheck2} accent="success" />
-          <KpiCard title="Por vencer" value={contratos.filter((contrato) => contrato.estado === 'por_vencer').length} icon={FileWarning} accent="warning" />
-          <KpiCard title="Vencidos" value={contratos.filter((contrato) => contrato.estado === 'vencido').length} icon={FileX2} accent="primary" />
+          <KpiCard title="Total contratos" value={overview?.stats.total ?? 0} icon={FileText} accent="primary" />
+          <KpiCard title="Vigentes" value={overview?.stats.vigentes ?? 0} icon={FileCheck2} accent="success" />
+          <KpiCard title="Por vencer" value={overview?.stats.porVencer ?? 0} icon={FileWarning} accent="warning" />
+          <KpiCard title="Vencidos" value={overview?.stats.vencidos ?? 0} icon={FileX2} accent="primary" />
         </div>
 
         <Card className="overflow-hidden border-border/60 shadow-elegant">
@@ -53,24 +78,21 @@ export function ContratosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contratos.map((contrato) => {
-                const empleado = empleadoPorId(contrato.empleadoId);
-
-                if (!empleado) {
-                  return null;
-                }
-
-                return (
+              {error ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-6 text-center text-sm text-destructive">{error}</TableCell>
+                </TableRow>
+              ) : overview?.contratos.map((contrato) => (
                   <TableRow key={contrato.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{contrato.id}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                          {empleado.iniciales}
+                          {contrato.empleado.iniciales}
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">{empleado.nombre}</p>
-                          <p className="text-xs text-muted-foreground">{empleado.puesto}</p>
+                          <p className="font-medium text-foreground">{contrato.empleado.nombre}</p>
+                          <p className="text-xs text-muted-foreground">{contrato.empleado.puesto}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -90,8 +112,7 @@ export function ContratosPage() {
                       </Link>
                     </TableCell>
                   </TableRow>
-                );
-              })}
+              ))}
             </TableBody>
           </Table>
         </Card>

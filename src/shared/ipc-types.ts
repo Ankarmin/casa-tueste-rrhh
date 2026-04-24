@@ -1,0 +1,16 @@
+export const IPC_CHANNELS = {
+  authLogin: 'auth:login',
+  authLogout: 'auth:logout',
+  authSession: 'auth:session',
+  dashboardSummary: 'dashboard:summary',
+  notificationsList: 'notifications:list',
+  employeesList: 'employees:list',
+  employeesActive: 'employees:active',
+  employeesGetById: 'employees:getById',
+  employeesCreate: 'employees:create',
+  contractsList: 'contracts:list',
+  contractsGetById: 'contracts:getById',
+  attendancesToday: 'attendances:today',
+  terminationsList: 'terminations:list',
+  terminationsCreate: 'terminations:create',
+} as const;

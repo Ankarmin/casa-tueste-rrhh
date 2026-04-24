@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Save, UserMinus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Header } from '../components/layout/header';
@@ -8,14 +9,56 @@ import { Label } from '../components/ui/label';
 import { SelectField } from '../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Textarea } from '../components/ui/textarea';
-import { bajas, empleadoPorId, empleados } from '../lib/mock-data';
+import type { TerminationsOverview } from '../shared/dto';
+import { unwrapResult } from '../lib/electron-api';
+
+const terminationTypeMap = {
+  vol: 'Voluntaria',
+  invol: 'Involuntaria',
+  fin: 'Fin de contrato',
+  jub: 'Jubilacion',
+} as const;
 
 export function BajasPage() {
-  const activos = empleados.filter((empleado) => empleado.estado === 'activo');
+  const [overview, setOverview] = useState<TerminationsOverview | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const loadOverview = async () => {
+    const response = await unwrapResult(window.electronAPI.terminations.list());
+    setOverview(response);
+  };
+
+  useEffect(() => {
+    void loadOverview().catch((error) => {
+      toast.error(error instanceof Error ? error.message : 'No se pudo cargar bajas.');
+    });
+  }, []);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    toast.success('Baja registrada en el expediente');
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    setIsSubmitting(true);
+
+    try {
+      await unwrapResult(
+        window.electronAPI.terminations.create({
+          empleadoId: String(formData.get('empleado') ?? ''),
+          tipo: terminationTypeMap[String(formData.get('tipoBaja') ?? 'vol') as keyof typeof terminationTypeMap],
+          motivo: String(formData.get('motivo') ?? ''),
+          fecha: String(formData.get('fecha') ?? ''),
+          observaciones: String(formData.get('obs') ?? ''),
+        }),
+      );
+      await loadOverview();
+      form.reset();
+      toast.success('Baja registrada en el expediente');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo registrar la baja.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -44,18 +87,18 @@ export function BajasPage() {
 
               <form onSubmit={handleSubmit} className="space-y-5 p-6">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2"><Label htmlFor="empleado">Empleado</Label><SelectField id="empleado" defaultValue=""><option value="" disabled>Selecciona un colaborador</option>{activos.map((empleado) => <option key={empleado.id} value={empleado.id}>{empleado.nombre} · {empleado.puesto}</option>)}</SelectField></div>
-                  <div className="space-y-2"><Label htmlFor="tipoBaja">Tipo de baja</Label><SelectField id="tipoBaja" defaultValue=""><option value="" disabled>Selecciona el tipo</option><option value="vol">Voluntaria</option><option value="invol">Involuntaria</option><option value="fin">Fin de contrato</option><option value="jub">Jubilacion</option></SelectField></div>
-                  <div className="space-y-2"><Label htmlFor="motivo">Motivo</Label><Input id="motivo" placeholder="Ej. cambio de ciudad" required /></div>
-                  <div className="space-y-2"><Label htmlFor="fecha">Fecha de finalizacion</Label><Input id="fecha" type="date" required /></div>
-                  <div className="space-y-2 md:col-span-2"><Label htmlFor="obs">Observaciones</Label><Textarea id="obs" placeholder="Detalles del proceso de salida, entrega de inventario, finiquito..." rows={6} /></div>
-                </div>
+                   <div className="space-y-2"><Label htmlFor="empleado">Empleado</Label><SelectField id="empleado" name="empleado" defaultValue=""><option value="" disabled>Selecciona un colaborador</option>{overview?.activos.map((empleado) => <option key={empleado.id} value={empleado.id}>{empleado.nombre} · {empleado.puesto}</option>)}</SelectField></div>
+                   <div className="space-y-2"><Label htmlFor="tipoBaja">Tipo de baja</Label><SelectField id="tipoBaja" name="tipoBaja" defaultValue=""><option value="" disabled>Selecciona el tipo</option><option value="vol">Voluntaria</option><option value="invol">Involuntaria</option><option value="fin">Fin de contrato</option><option value="jub">Jubilacion</option></SelectField></div>
+                   <div className="space-y-2"><Label htmlFor="motivo">Motivo</Label><Input id="motivo" name="motivo" placeholder="Ej. cambio de ciudad" required /></div>
+                   <div className="space-y-2"><Label htmlFor="fecha">Fecha de finalizacion</Label><Input id="fecha" name="fecha" type="date" required /></div>
+                   <div className="space-y-2 md:col-span-2"><Label htmlFor="obs">Observaciones</Label><Textarea id="obs" name="obs" placeholder="Detalles del proceso de salida, entrega de inventario, finiquito..." rows={6} /></div>
+                 </div>
 
-                <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
-                  <Button type="button" variant="outline">Cancelar</Button>
-                  <Button type="submit" className="bg-gradient-primary text-primary-foreground shadow-glow"><Save className="h-4 w-4" /> Confirmar baja</Button>
-                </div>
-              </form>
+                 <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
+                   <Button type="reset" variant="outline" disabled={isSubmitting}>Cancelar</Button>
+                   <Button type="submit" className="bg-gradient-primary text-primary-foreground shadow-glow" disabled={isSubmitting}><Save className="h-4 w-4" /> {isSubmitting ? 'Guardando...' : 'Confirmar baja'}</Button>
+                 </div>
+               </form>
             </Card>
 
             <Card className="overflow-hidden border-border/60 shadow-elegant">
@@ -71,23 +114,15 @@ export function BajasPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {bajas.map((baja) => {
-                    const empleado = empleadoPorId(baja.empleadoId);
-
-                    if (!empleado) {
-                      return null;
-                    }
-
-                    return (
+                  {overview?.bajas.map((baja) => (
                       <TableRow key={baja.id}>
                         <TableCell className="font-mono text-xs text-muted-foreground">{baja.id}</TableCell>
-                        <TableCell><p className="font-medium text-foreground">{empleado.nombre}</p><p className="text-xs text-muted-foreground">{empleado.puesto}</p></TableCell>
+                        <TableCell><p className="font-medium text-foreground">{baja.empleado.nombre}</p><p className="text-xs text-muted-foreground">{baja.empleado.puesto}</p></TableCell>
                         <TableCell className="text-sm">{baja.motivo}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{baja.tipo}</TableCell>
                         <TableCell className="text-sm">{baja.fecha}</TableCell>
                       </TableRow>
-                    );
-                  })}
+                  ))}
                 </TableBody>
               </Table>
             </Card>

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell, BriefcaseBusiness, CalendarClock, Search, UserCog, UserMinus2 } from 'lucide-react';
 import { Input } from '../ui/input';
-import { currentUser, notificaciones } from '../../lib/mock-data';
+import type { NotificationItem, SessionUser } from '../../shared/dto';
+import { unwrapResult } from '../../lib/electron-api';
 
 type HeaderProps = {
   title: string;
@@ -17,6 +18,37 @@ const iconsByType = {
 
 export function Header({ title, subtitle }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
+  const [notificaciones, setNotificaciones] = useState<NotificationItem[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void Promise.all([
+      unwrapResult(window.electronAPI.auth.getSession()),
+      unwrapResult(window.electronAPI.notifications.list()),
+    ])
+      .then(([session, notifications]) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setCurrentUser(session);
+        setNotificaciones(notifications);
+      })
+      .catch(() => {
+        if (!isMounted) {
+          return;
+        }
+
+        setCurrentUser(null);
+        setNotificaciones([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const unreadCount = notificaciones.length;
 
@@ -96,12 +128,12 @@ export function Header({ title, subtitle }: HeaderProps) {
 
           <div className="flex items-center gap-3 border-l border-border pl-3">
             <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold leading-tight text-foreground">{currentUser.nombre}</p>
-              <p className="text-xs text-muted-foreground">{currentUser.rol}</p>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-sm font-semibold text-primary-foreground">
-              {currentUser.iniciales}
-            </div>
+               <p className="text-sm font-semibold leading-tight text-foreground">{currentUser?.nombre ?? 'Sesion local'}</p>
+               <p className="text-xs text-muted-foreground">{currentUser?.rol ?? 'Sin sesion activa'}</p>
+             </div>
+             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-sm font-semibold text-primary-foreground">
+               {currentUser?.iniciales ?? 'RR'}
+             </div>
           </div>
         </div>
       </div>

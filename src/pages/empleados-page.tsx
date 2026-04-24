@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Mail, Phone, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/layout/header';
@@ -6,9 +7,38 @@ import { buttonVariants } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { empleados } from '../lib/mock-data';
+import type { EmployeeListItem } from '../shared/dto';
+import { unwrapResult } from '../lib/electron-api';
 
 export function EmpleadosPage() {
+  const [empleados, setEmpleados] = useState<EmployeeListItem[]>([]);
+  const [query, setQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void unwrapResult(window.electronAPI.employees.list())
+      .then((items) => {
+        if (isMounted) {
+          setEmpleados(items);
+        }
+      })
+      .catch((loadError) => {
+        if (isMounted) {
+          setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar el directorio.');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const empleadosFiltrados = empleados.filter((empleado) =>
+    [empleado.nombre, empleado.puesto, empleado.area].join(' ').toLowerCase().includes(query.toLowerCase().trim()),
+  );
+
   return (
     <>
       <Header title="Directorio de empleados" subtitle="Plantilla completa de Casa Tueste" />
@@ -17,12 +47,12 @@ export function EmpleadosPage() {
           <div className="border-b border-border p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-foreground">{empleados.length} colaboradores</h3>
+                <h3 className="text-lg font-semibold text-foreground">{empleadosFiltrados.length} colaboradores</h3>
                 <p className="text-sm text-muted-foreground">Datos de contacto y estatus</p>
               </div>
               <div className="relative w-full md:w-72">
                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Buscar empleado..." className="bg-background pl-9" />
+                <Input placeholder="Buscar empleado..." className="bg-background pl-9" value={query} onChange={(event) => setQuery(event.target.value)} />
               </div>
             </div>
           </div>
@@ -39,7 +69,11 @@ export function EmpleadosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {empleados.map((empleado) => (
+              {error ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-6 text-center text-sm text-destructive">{error}</TableCell>
+                </TableRow>
+              ) : empleadosFiltrados.map((empleado) => (
                 <TableRow key={empleado.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">

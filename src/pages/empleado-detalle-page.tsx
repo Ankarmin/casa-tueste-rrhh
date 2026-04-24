@@ -1,22 +1,48 @@
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Briefcase, CalendarDays, Mail, Phone, ShieldCheck } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { Header } from '../components/layout/header';
 import { StatusBadge } from '../components/panel/status-badge';
 import { buttonVariants } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { asistenciasHoy, contratos, empleadoPorId } from '../lib/mock-data';
+import type { EmployeeDetailView } from '../shared/dto';
+import { unwrapResult } from '../lib/electron-api';
 import { NotFoundPage } from './not-found-page';
 
 export function EmpleadoDetallePage() {
   const { id = '' } = useParams();
-  const empleado = empleadoPorId(id);
+  const [detail, setDetail] = useState<EmployeeDetailView | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  if (!empleado) {
+  useEffect(() => {
+    let isMounted = true;
+
+    void unwrapResult(window.electronAPI.employees.getById(id))
+      .then((response) => {
+        if (isMounted) {
+          setDetail(response);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoaded(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  if (!isLoaded) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Cargando expediente...</div>;
+  }
+
+  if (!detail) {
     return <NotFoundPage />;
   }
 
-  const contrato = contratos.find((item) => item.empleadoId === empleado.id);
-  const asistencia = asistenciasHoy.find((item) => item.empleadoId === empleado.id);
+  const { empleado, contrato, asistencia } = detail;
 
   return (
     <>

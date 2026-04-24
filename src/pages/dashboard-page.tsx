@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { AlertTriangle, ArrowUpRight, Clock, Coffee, FileText, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/layout/header';
@@ -5,11 +6,50 @@ import { KpiCard } from '../components/panel/kpi-card';
 import { StatusBadge } from '../components/panel/status-badge';
 import { buttonVariants } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { asistenciasHoy, contratos, currentUser, empleadoPorId, kpis } from '../lib/mock-data';
+import type { DashboardSummary } from '../shared/dto';
+import { unwrapResult } from '../lib/electron-api';
 
 export function DashboardPage() {
-  const recientes = asistenciasHoy.slice(0, 5);
-  const proximosVencer = contratos.filter((contrato) => contrato.estado === 'por_vencer');
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void unwrapResult(window.electronAPI.dashboard.getSummary())
+      .then((response) => {
+        if (isMounted) {
+          setSummary(response);
+        }
+      })
+      .catch((loadError) => {
+        if (isMounted) {
+          setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar el panel.');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (error) {
+    return (
+      <>
+        <Header title="Panel general" subtitle="Resumen operativo de Recursos Humanos · Casa Tueste" />
+        <main className="flex flex-1 items-center justify-center p-6 text-sm text-destructive">{error}</main>
+      </>
+    );
+  }
+
+  if (!summary) {
+    return (
+      <>
+        <Header title="Panel general" subtitle="Resumen operativo de Recursos Humanos · Casa Tueste" />
+        <main className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">Cargando panel...</main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -20,13 +60,13 @@ export function DashboardPage() {
           <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="max-w-xl">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium">
-                <Coffee className="h-3.5 w-3.5" /> Buen dia, {currentUser.nombre.split(' ')[0]}
+                <Coffee className="h-3.5 w-3.5" /> Buen dia, {summary.currentUser.nombre.split(' ')[0]}
               </div>
               <h2 className="text-3xl font-semibold leading-tight md:text-4xl">
                 Tu equipo esta listo para atender otra jornada con excelencia.
               </h2>
               <p className="mt-3 text-primary-foreground/80">
-                Hoy tienes {kpis.asistenciasHoy} colaboradores en sede y {kpis.contratosPorVencer} contratos que requieren
+                Hoy tienes {summary.kpis.asistenciasHoy} colaboradores en sede y {summary.kpis.contratosPorVencer} contratos que requieren
                 tu atencion.
               </p>
             </div>
@@ -49,10 +89,10 @@ export function DashboardPage() {
         </Card>
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard title="Empleados activos" value={kpis.totalEmpleados} icon={Users} accent="primary" hint="Plantilla total" trend="+2 este mes" />
-          <KpiCard title="Asistencias hoy" value={kpis.asistenciasHoy} icon={Clock} accent="success" hint={`de ${kpis.totalEmpleados} programados`} />
-          <KpiCard title="Contratos vigentes" value={kpis.contratosVigentes} icon={FileText} accent="accent" hint="Documentacion al dia" />
-          <KpiCard title="Por vencer (90 dias)" value={kpis.contratosPorVencer} icon={AlertTriangle} accent="warning" hint="Requieren renovacion" />
+          <KpiCard title="Empleados activos" value={summary.kpis.totalEmpleados} icon={Users} accent="primary" hint="Plantilla total" trend="+2 este mes" />
+          <KpiCard title="Asistencias hoy" value={summary.kpis.asistenciasHoy} icon={Clock} accent="success" hint={`de ${summary.kpis.totalEmpleados} programados`} />
+          <KpiCard title="Contratos vigentes" value={summary.kpis.contratosVigentes} icon={FileText} accent="accent" hint="Documentacion al dia" />
+          <KpiCard title="Por vencer (90 dias)" value={summary.kpis.contratosPorVencer} icon={AlertTriangle} accent="warning" hint="Requieren renovacion" />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -67,23 +107,17 @@ export function DashboardPage() {
               </Link>
             </div>
             <div className="divide-y divide-border">
-              {recientes.map((asistencia) => {
-                const empleado = empleadoPorId(asistencia.empleadoId);
-
-                if (!empleado) {
-                  return null;
-                }
-
+              {summary.recientes.map((asistencia) => {
                 return (
-                  <div key={asistencia.empleadoId} className="flex items-center justify-between py-3">
+                  <div key={asistencia.id} className="flex items-center justify-between py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
-                        {empleado.iniciales}
+                        {asistencia.empleado.iniciales}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">{empleado.nombre}</p>
+                        <p className="truncate text-sm font-medium text-foreground">{asistencia.empleado.nombre}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {empleado.puesto} · {empleado.area}
+                          {asistencia.empleado.puesto}
                         </p>
                       </div>
                     </div>
@@ -103,17 +137,11 @@ export function DashboardPage() {
               <p className="text-sm text-muted-foreground">Accion recomendada</p>
             </div>
             <div className="space-y-4">
-              {proximosVencer.map((contrato) => {
-                const empleado = empleadoPorId(contrato.empleadoId);
-
-                if (!empleado) {
-                  return null;
-                }
-
+              {summary.proximosVencer.map((contrato) => {
                 return (
                   <div key={contrato.id} className="rounded-lg border border-border bg-surface/50 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-medium text-foreground">{empleado.nombre}</p>
+                      <p className="truncate text-sm font-medium text-foreground">{contrato.empleado.nombre}</p>
                       <StatusBadge status={contrato.estado} />
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
