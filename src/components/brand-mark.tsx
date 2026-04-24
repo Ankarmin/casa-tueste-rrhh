@@ -7,6 +7,8 @@ type BrandMarkProps = {
 };
 
 export function BrandMark({ className, badgeClassName, labelClassName }: BrandMarkProps) {
+  const imagotipoSrc = `${import.meta.env.BASE_URL}imagotipo.webp`;
+
   return (
     <div className={cn('flex items-center gap-3', className)}>
       <div
@@ -15,7 +17,7 @@ export function BrandMark({ className, badgeClassName, labelClassName }: BrandMa
           badgeClassName,
         )}
       >
-        <img src="/imagotipo.webp" alt="Casa Tueste" className="h-full w-full object-contain" />
+        <img src={imagotipoSrc} alt="Casa Tueste" className="h-full w-full object-contain" />
       </div>
       <div className={labelClassName}>
         <p className="text-base font-semibold leading-tight">Casa Tueste</p>

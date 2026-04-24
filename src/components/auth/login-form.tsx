@@ -6,6 +6,7 @@ type LoginProps = {
 };
 
 export function Login({ onLogin }: LoginProps) {
+  const loginBackgroundSrc = `${import.meta.env.BASE_URL}login.webp`;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,12 +29,12 @@ export function Login({ onLogin }: LoginProps) {
 
   return (
     <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#2B1A11]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.12),_transparent_34%),linear-gradient(135deg,_#2B1A11_0%,_#4A2F21_45%,_#7A573D_100%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:72px_72px] opacity-30" />
-      <div className="absolute -top-12 -right-10 hidden h-44 w-44 rounded-full bg-white/10 p-7 shadow-2xl backdrop-blur md:block">
-        <img src="/imagotipo.webp" alt="" aria-hidden="true" className="h-full w-full object-contain opacity-70" />
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url("${loginBackgroundSrc}")` }}
+      >
+        <div className="absolute inset-0 bg-[#3C2415]/70 backdrop-blur-sm" />
       </div>
-      <div className="absolute -bottom-16 -left-12 h-52 w-52 rounded-full bg-[#D8B08C]/15 blur-3xl" />
 
       <div className="relative z-10 mx-4 w-full max-w-md">
         <div className="rounded-2xl border border-[#6F4E37]/20 bg-white/95 p-8 shadow-2xl backdrop-blur-md">
