@@ -13,11 +13,18 @@ import { InitSchema1714000000000 } from './migrations/0001-init';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: env.host,
-  port: env.port,
-  username: env.username,
-  password: env.password,
-  database: env.database,
+  ...(env.url
+    ? {
+        url: env.url,
+      }
+    : {
+        host: env.host,
+        port: env.port,
+        username: env.username,
+        password: env.password,
+        database: env.database,
+      }),
+  ssl: env.ssl ? { rejectUnauthorized: false } : false,
   synchronize: false,
   logging: false,
   entities: [

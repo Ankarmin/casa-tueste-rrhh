@@ -16,7 +16,7 @@ async function main() {
   await dataSource.transaction(async (manager) => {
     await manager.getRepository(UserEntity).upsert(
       {
-        username: 'rrhh',
+        username: 'modulo.rrhh@casatueste.pe',
         passwordHash: await bcrypt.hash('rrhh', 10),
         nombre: currentUser.nombre,
         rol: currentUser.rol,

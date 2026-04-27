@@ -6,16 +6,19 @@ import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import fs from 'node:fs';
 import path from 'node:path';
 
 const appIcon = path.resolve(__dirname, 'public', 'favicon');
 const appIconIco = path.resolve(__dirname, 'public', 'favicon.ico');
 const appDescription = 'Sistema de Recursos Humanos de Casa Tueste para escritorio.';
 const executableName = 'CasaTuesteRRHH';
+const envFilePath = path.resolve(__dirname, '.env');
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    extraResource: fs.existsSync(envFilePath) ? [envFilePath] : [],
     icon: appIcon,
     executableName,
     win32metadata: {

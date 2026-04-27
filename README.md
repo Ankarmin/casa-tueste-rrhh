@@ -5,16 +5,26 @@ Aplicacion de escritorio Electron + React para la gestion de Recursos Humanos de
 ## Requisitos
 
 - Node.js 20+
-- Docker Desktop
-- PostgreSQL 16 via `docker compose` o una instancia propia
+- Acceso a una base PostgreSQL activa
 
-## Configuracion local
+## Configuracion
 
 1. Instala dependencias con `npm install`.
 2. Crea `.env` a partir de `.env.example`.
-3. Levanta la base con `npm run db:up`.
+3. Configura la conexion a Railway en `.env` usando `DATABASE_PUBLIC_URL`.
 4. Ejecuta migraciones y seed con `npm run db:setup`.
 5. Inicia la app con `npm start`.
+
+## Railway
+
+- Para esta app de escritorio, usa `DATABASE_PUBLIC_URL` porque la conexion sale desde la maquina del usuario.
+- `DATABASE_URL` con dominio privado solo sirve para servicios que corren dentro de Railway.
+- Si conectas por `DATABASE_PUBLIC_URL`, la app activa SSL automaticamente. Puedes forzarlo manualmente con `DB_SSL=true`.
+
+## Credenciales Seed
+
+- Usuario: `modulo.rrhh@casatueste.pe`
+- Contrasena: `rrhh`
 
 ## Scripts utiles
 
@@ -23,6 +33,12 @@ Aplicacion de escritorio Electron + React para la gestion de Recursos Humanos de
 - `npm run package`
 - `npm run make`
 - `npm run release:check`
+
+## Build y Distribucion
+
+- `npm run package` genera la app empaquetada en `out/Casa Tueste RRHH-win32-x64/`.
+- `npm run make` genera el instalador en `out/make/squirrel.windows/x64/CasaTuesteRRHHSetup.exe`.
+- Si compartes la version portable, debes compartir la carpeta completa `out/Casa Tueste RRHH-win32-x64/` o un `.zip` con su contenido.
 
 ## Checklist De Release
 
@@ -37,5 +53,6 @@ Aplicacion de escritorio Electron + React para la gestion de Recursos Humanos de
 ## Notas Operativas
 
 - La app no usa datos mock en runtime; depende de PostgreSQL e IPC local.
-- En entorno empaquetado, la configuracion de BD debe existir en variables de entorno del sistema o en un `.env` accesible para la app.
+- Si existe un `.env` en la raiz del proyecto al ejecutar `npm run package` o `npm run make`, Electron Forge lo incluye en `resources/.env` para que la app empaquetada pueda conectarse a Railway.
+- Antes de distribuir un `.exe`, revisa el `.env` usado en el build, porque cualquier credencial incluida ahi viajara dentro del paquete final.
 - `npm audit` todavia reporta vulnerabilidades heredadas por dependencias de Electron Forge/Vite y TypeORM que no tienen correccion segura sin upgrades mayores.
